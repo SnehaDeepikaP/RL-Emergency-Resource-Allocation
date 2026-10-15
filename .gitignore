@@ -1,7 +1,8 @@
-# Large dataset files (>100MB rejected by GitHub)
-RL_Dynamic_Emergency_Resource_Allocation_FINAL/results/ems_2025.json
+# Large dataset files & archives
 *.zip
-!RL_Dynamic_Emergency_Resource_Allocation_FINAL/results/dqn_emergency_allocation.zip
+!results/dqn_emergency_allocation.zip
+*.json.large
+cache/
 
 # Python & Environment
 __pycache__/
@@ -13,7 +14,4 @@ __pycache__/
 .venv
 env/
 venv/
-
-# Cache directories
-cache/
 .system_generated/

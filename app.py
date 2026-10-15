@@ -98,6 +98,25 @@ st.markdown("""
         padding: 16px;
         margin-top: 10px;
     }
+    .image-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .image-card h5 {
+        color: #0f172a;
+        font-weight: 600;
+        margin-top: 8px;
+        margin-bottom: 4px;
+    }
+    .image-card p {
+        color: #64748b;
+        font-size: 12px;
+        margin-bottom: 0;
+    }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
@@ -111,9 +130,9 @@ st.markdown("""
 
 # Path Resolution
 BASE_DIR = Path(__file__).resolve().parent
-RESULTS_DIR = BASE_DIR / "RL_Dynamic_Emergency_Resource_Allocation_FINAL" / "results"
+RESULTS_DIR = BASE_DIR / "results"
 if not RESULTS_DIR.exists():
-    RESULTS_DIR = BASE_DIR / "results"
+    RESULTS_DIR = BASE_DIR / "RL_Dynamic_Emergency_Resource_Allocation_FINAL" / "results"
 
 # Data Caching Functions
 @st.cache_data
@@ -227,7 +246,8 @@ tabs = st.tabs([
     "🤖 Live RL Dispatch Simulator",
     "🗺️ Geospatial Hospital Network",
     "📈 Policy Benchmarks & Stress Tests",
-    "📋 Data Explorer & Evaluation Reports"
+    "🖼️ Research Results & Figures",
+    "📋 Data Explorer & Export"
 ])
 
 # -------------------------------------------------------------
@@ -330,8 +350,6 @@ with tabs[0]:
             categories = ['Reward Score', 'Travel Efficiency', 'Fairness Index', 'Capacity Safety']
             
             fig = go.Figure()
-            # Normalize scores for radar visualization (0 to 1 scale)
-            # DQN
             fig.add_trace(go.Scatterpolar(
                 r=[0.85, 0.88, 0.70, 0.98],
                 theta=categories,
@@ -339,7 +357,6 @@ with tabs[0]:
                 name='DQN (Proposed RL)',
                 line_color='#0284c7'
             ))
-            # Nearest
             fig.add_trace(go.Scatterpolar(
                 r=[0.95, 0.98, 0.60, 0.82],
                 theta=categories,
@@ -347,7 +364,6 @@ with tabs[0]:
                 name='Nearest Hospital Heuristic',
                 line_color='#f59e0b'
             ))
-            # CapacityFirst
             fig.add_trace(go.Scatterpolar(
                 r=[0.30, 0.32, 0.99, 0.99],
                 theta=categories,
@@ -410,26 +426,21 @@ with tabs[1]:
     with col_sim_out:
         st.markdown("##### 🧠 3. Real-Time RL Inference & Q-Value Assessment")
         
-        # Construct synthetic observation matching environment specifications (219 dims)
-        # obs_dim = 190 (zone one-hot) + 5 (context) + 12 (occupancy_frac) + 12 (free_frac) = 219
         NUM_HOSPITALS = len(hospitals_df) if not hospitals_df.empty else 12
         NUM_ZONES = 190
         
-        # Borough to zone approximate mapping index
         borough_zone_map = {"Manhattan": 12, "Brooklyn": 45, "Queens": 95, "Bronx": 150}
         zone_idx = borough_zone_map.get(inc_borough, 0)
         
         obs = np.zeros(NUM_ZONES + 5 + NUM_HOSPITALS + NUM_HOSPITALS, dtype=np.float32)
         obs[zone_idx] = 1.0
         
-        # Context scalars
         obs[NUM_ZONES] = float(sev_bin) / 2.0
         obs[NUM_ZONES + 1] = (np.sin(2 * np.pi * hour_of_day / 24) + 1) / 2.0
         obs[NUM_ZONES + 2] = (np.cos(2 * np.pi * hour_of_day / 24) + 1) / 2.0
         obs[NUM_ZONES + 3] = 1.0 if is_weekend else 0.0
-        obs[NUM_ZONES + 4] = 0.55 # normalized demand
+        obs[NUM_ZONES + 4] = 0.55
         
-        # Occupancies
         if "Extreme" in hosp_stress:
             base_occ = np.array([0.92, 0.95, 0.88, 0.89, 0.94, 0.96, 0.87, 0.90, 0.93, 0.91, 0.86, 0.92])
         elif "High" in hosp_stress:
@@ -440,14 +451,12 @@ with tabs[1]:
         obs[NUM_ZONES + 5 : NUM_ZONES + 5 + NUM_HOSPITALS] = base_occ
         obs[NUM_ZONES + 5 + NUM_HOSPITALS :] = 1.0 - base_occ
         
-        # Model prediction
         if model is not None:
             try:
                 import torch
                 action, _ = model.predict(obs, deterministic=True)
                 action = int(action)
                 
-                # Extract exact Q-values from network
                 with torch.no_grad():
                     obs_tensor, _ = model.policy.obs_to_tensor(obs)
                     features = model.q_net.features_extractor(obs_tensor)
@@ -459,7 +468,6 @@ with tabs[1]:
             action = 5
             q_vals = np.array([105.5, 104.4, 97.9, 102.5, 106.8, 107.1, 106.1, 103.5, 103.1, 102.2, 104.9, 102.8])
 
-        # Find Nearest hospital for selected borough as baseline comparison
         borough_hospitals = hospitals_df[hospitals_df['borough'] == inc_borough]
         if not borough_hospitals.empty:
             nearest_idx = borough_hospitals.index[0]
@@ -480,7 +488,6 @@ with tabs[1]:
         </div>
         """, unsafe_allow_html=True)
         
-        # Side-by-side comparison cards
         col_d1, col_d2 = st.columns(2)
         with col_d1:
             st.metric(
@@ -498,7 +505,6 @@ with tabs[1]:
                 help=f"Full Name: {nearest_hosp_name}"
             )
 
-        # Plot Q-values across all 12 hospitals
         hosp_labels = [h[:18] + ".." for h in hospitals_df['facility_name']] if not hospitals_df.empty else [f"Hosp {i}" for i in range(12)]
         colors = ['#0284c7' if i == action else ('#f59e0b' if i == nearest_idx else '#94a3b8') for i in range(len(q_vals))]
         
@@ -528,14 +534,12 @@ with tabs[2]:
     col_map, col_table = st.columns([1.6, 1])
     
     with col_map:
-        # Check if saved folium HTML map is present
         map_html_path = RESULTS_DIR / "nyc_emergency_map.html"
         if map_html_path.exists():
             with open(map_html_path, "r", encoding="utf-8") as f:
                 html_data = f.read()
             components.html(html_data, height=520, scrolling=True)
         else:
-            # Fallback PyDeck / Plotly Map
             fig_map = px.scatter_mapbox(
                 hospitals_df,
                 lat="latitude",
@@ -659,7 +663,6 @@ with tabs[3]:
                 fig_sub.update_layout(height=280, showlegend=False, margin=dict(l=20, r=20, t=40, b=20))
                 st.plotly_chart(fig_sub, use_container_width=True)
 
-    # Multi-Seed Robustness
     if not multi_seed_res.empty:
         st.markdown("#### 🎲 Multi-Seed Robustness (5 Random Seeds: 42, 7, 21, 99, 123)")
         fig_seed = go.Figure()
@@ -680,31 +683,172 @@ with tabs[3]:
         st.plotly_chart(fig_seed, use_container_width=True)
 
 # -------------------------------------------------------------
-# TAB 5: DATA EXPLORER & EVALUATION REPORTS
+# TAB 5: RESEARCH RESULTS & FIGURES (ALL IMAGES)
 # -------------------------------------------------------------
 with tabs[4]:
-    st.subheader("Data Explorer, Results Export & Publication Assets")
-    st.markdown("Download raw benchmark CSV tables and view original research figures generated during experimental trials.")
+    st.subheader("🖼️ Experimental Results & Empirical Plots Gallery")
+    st.markdown("Browse all 12 publication-grade evaluation figures generated directly during experimental execution and model benchmarking.")
     
-    col_exp1, col_exp2 = st.columns([1, 1])
-    
-    with col_exp1:
-        st.markdown("#### 📥 Download Benchmark Results (CSV)")
-        
-        csv_options = {
-            "Normal Policy Evaluation Results": normal_res,
-            "Critical Case Evaluation Results": critical_res,
-            "Stress Test Multi-Scenario Results": stress_res,
-            "Fairness & Resource Balance Results": fairness_res,
-            "Multi-Seed Robustness Evaluation": multi_seed_res,
-            "NYC Hospitals Geo-Capacity Registry": hospitals_df
+    # All 12 image assets with descriptive titles and summaries
+    ALL_IMAGES = [
+        {
+            "filename": "stress_test_heatmap.png",
+            "title": "1. Stress Test Heatmap across Policies & Operational Conditions",
+            "category": "Robustness & Stress",
+            "desc": "Heatmap illustrating mean reward and system stability across normal traffic, high congestion, demand surge, and critical bed shortage scenarios."
+        },
+        {
+            "filename": "fairness_comparison.png",
+            "title": "2. Jain's Fairness Index & Bed Utilization Variance",
+            "category": "Fairness & Equity",
+            "desc": "Comparison of Jain's Fairness Index showing how DQN proactively avoids overloading central hospitals and balances workload across outer-borough facilities."
+        },
+        {
+            "filename": "critical_case_performance.png",
+            "title": "3. Critical Emergency Case Performance & Rapid Response",
+            "category": "Clinical Safety",
+            "desc": "Performance comparison specifically on highest-urgency life-threatening calls (Severity Level 0), verifying rapid transit without facility bottlenecks."
+        },
+        {
+            "filename": "multi_seed_robustness.png",
+            "title": "4. Multi-Seed Robustness Analysis (Seeds: 42, 7, 21, 99, 123)",
+            "category": "Statistical Stability",
+            "desc": "Distribution of rewards and transit times across 5 independent evaluation seeds, demonstrating high convergence reliability and low variance."
+        },
+        {
+            "filename": "policy_comparison_reward.png",
+            "title": "5. Policy Reward Distribution (Boxplots)",
+            "category": "Benchmark Distributions",
+            "desc": "Full episode reward distribution comparing DQN against Nearest, Weighted Heuristic, Capacity-First, and Random dispatch baselines."
+        },
+        {
+            "filename": "policy_comparison_mean_reward.png",
+            "title": "6. Policy Comparison: Mean Reward",
+            "category": "Benchmark Summaries",
+            "desc": "Aggregated mean episode return showing DQN achieving competitive rewards while safeguarding capacity thresholds."
+        },
+        {
+            "filename": "policy_comparison_travel_time.png",
+            "title": "7. Policy Comparison: Travel Time Distributions",
+            "category": "Operational Efficiency",
+            "desc": "Spread of transit minutes across emergency incidents, highlighting DQN's tight travel-time profile compared to capacity-first approaches."
+        },
+        {
+            "filename": "policy_comparison_mean_travel_min.png",
+            "title": "8. Policy Comparison: Mean Transit Minutes",
+            "category": "Operational Efficiency",
+            "desc": "Direct transit minute comparison showing DQN preserving near-optimal response speeds (13.6 min vs. 12.2 min Nearest heuristic)."
+        },
+        {
+            "filename": "policy_comparison_success.png",
+            "title": "9. Policy Dispatch Success Distributions",
+            "category": "System Reliability",
+            "desc": "Evaluation of patient admission completions across all simulated testing episodes."
+        },
+        {
+            "filename": "policy_comparison_success_rate.png",
+            "title": "10. Policy Comparison: Overall Success Rate (100%)",
+            "category": "System Reliability",
+            "desc": "All evaluated policies achieved 100% dispatch service rate without call abandonment."
+        },
+        {
+            "filename": "policy_comparison_overload.png",
+            "title": "11. Policy Overload Distribution Across Facilities",
+            "category": "Capacity Safety",
+            "desc": "Capacity safety audit demonstrating zero catastrophic over-admissions across tested episodes."
+        },
+        {
+            "filename": "policy_comparison_overload_rate.png",
+            "title": "12. Policy Comparison: Zero Overload Rate (0.0%)",
+            "category": "Capacity Safety",
+            "desc": "Verification that RL penalty terms successfully enforce strict hospital capacity boundaries."
         }
+    ]
+
+    view_mode = st.radio(
+        "Display Mode:",
+        ["🖼️ Two-Column Visual Gallery (All 12 Plots)", "🔍 Focused Inspector (Select Individual Image)"],
+        horizontal=True
+    )
+
+    if "Gallery" in view_mode:
+        for i in range(0, len(ALL_IMAGES), 2):
+            c1, c2 = st.columns(2)
+            # Item 1
+            item1 = ALL_IMAGES[i]
+            img1_path = RESULTS_DIR / item1["filename"]
+            with c1:
+                st.markdown(f"""
+                <div class="image-card">
+                    <span class="badge-pill" style="color: #0284c7; background: #e0f2fe; border: none;">{item1['category']}</span>
+                    <h5>{item1['title']}</h5>
+                    <p>{item1['desc']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if img1_path.exists():
+                    st.image(str(img1_path), use_container_width=True)
+                else:
+                    st.warning(f"Image `{item1['filename']}` not found.")
+            
+            # Item 2 (if exists)
+            if i + 1 < len(ALL_IMAGES):
+                item2 = ALL_IMAGES[i + 1]
+                img2_path = RESULTS_DIR / item2["filename"]
+                with c2:
+                    st.markdown(f"""
+                    <div class="image-card">
+                        <span class="badge-pill" style="color: #0284c7; background: #e0f2fe; border: none;">{item2['category']}</span>
+                        <h5>{item2['title']}</h5>
+                        <p>{item2['desc']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if img2_path.exists():
+                        st.image(str(img2_path), use_container_width=True)
+                    else:
+                        st.warning(f"Image `{item2['filename']}` not found.")
+    else:
+        chosen_title = st.selectbox("Select Research Plot to Inspect:", [item["title"] for item in ALL_IMAGES])
+        chosen_item = next(item for item in ALL_IMAGES if item["title"] == chosen_title)
+        img_chosen_path = RESULTS_DIR / chosen_item["filename"]
         
-        selected_csv = st.selectbox("Select Dataset to Inspect & Download:", list(csv_options.keys()))
-        selected_df = csv_options[selected_csv]
+        st.markdown(f"### {chosen_item['title']}")
+        st.caption(f"Category: {chosen_item['category']} | File: `{chosen_item['filename']}`")
+        st.info(chosen_item["desc"])
         
-        st.dataframe(selected_df, use_container_width=True)
-        
+        if img_chosen_path.exists():
+            st.image(str(img_chosen_path), use_container_width=True)
+            with open(img_chosen_path, "rb") as file_bytes:
+                st.download_button(
+                    label=f"⬇️ Download High-Res Image ({chosen_item['filename']})",
+                    data=file_bytes,
+                    file_name=chosen_item['filename'],
+                    mime="image/png"
+                )
+        else:
+            st.warning("Selected image not found.")
+
+# -------------------------------------------------------------
+# TAB 6: DATA EXPLORER & EXPORT
+# -------------------------------------------------------------
+with tabs[5]:
+    st.subheader("Data Explorer, Results Export & Benchmark Tables")
+    st.markdown("Download raw benchmark CSV tables and inspect evaluation metrics directly.")
+    
+    csv_options = {
+        "Normal Policy Evaluation Results": normal_res,
+        "Critical Case Evaluation Results": critical_res,
+        "Stress Test Multi-Scenario Results": stress_res,
+        "Fairness & Resource Balance Results": fairness_res,
+        "Multi-Seed Robustness Evaluation": multi_seed_res,
+        "NYC Hospitals Geo-Capacity Registry": hospitals_df
+    }
+    
+    selected_csv = st.selectbox("Select Dataset to Inspect & Download:", list(csv_options.keys()))
+    selected_df = csv_options[selected_csv]
+    
+    st.dataframe(selected_df, use_container_width=True)
+    
+    if not selected_df.empty:
         csv_bytes = selected_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label=f"⬇️ Download {selected_csv} (.csv)",
@@ -713,27 +857,6 @@ with tabs[4]:
             mime="text/csv",
             use_container_width=True
         )
-
-    with col_exp2:
-        st.markdown("#### 🖼️ Pre-Computed Research Artifacts")
-        img_options = [
-            ("Stress Test Heatmap", "stress_test_heatmap.png"),
-            ("Fairness Comparison", "fairness_comparison.png"),
-            ("Critical Case Performance", "critical_case_performance.png"),
-            ("Multi-Seed Robustness", "multi_seed_robustness.png"),
-            ("Policy Travel Time Comparison", "policy_comparison_travel_time.png"),
-            ("Policy Overload Rate Comparison", "policy_comparison_overload_rate.png")
-        ]
-        
-        chosen_img_name, chosen_img_file = st.selectbox("Select Research Chart:", img_options, format_func=lambda x: x[0])
-        img_path = BASE_DIR / chosen_img_file
-        if not img_path.exists():
-            img_path = RESULTS_DIR / chosen_img_file
-            
-        if img_path.exists():
-            st.image(str(img_path), caption=chosen_img_name, use_container_width=True)
-        else:
-            st.warning(f"Image {chosen_img_file} not found in workspace.")
 
 # Footer
 st.markdown("---")
