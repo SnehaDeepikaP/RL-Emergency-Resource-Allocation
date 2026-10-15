@@ -198,20 +198,16 @@ model = load_dqn_model()
 # Sidebar: Project Info & Global Controls
 with st.sidebar:
     st.image("https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=600&auto=format&fit=crop&q=80", caption="NYC Emergency Medical Services (EMS)", use_container_width=True)
-    st.markdown("### 🚑 Project Information")
+    st.markdown("### 🚑 Project Overview")
     st.markdown("""
-    **Project Title:**  
-    *Dynamic Emergency Resource Allocation via Deep Reinforcement Learning*
+    **Architecture:**  
+    *Dynamic Emergency Resource Allocation via Deep Q-Network (DQN)*
     
-    **Presenters:**  
-    - **Parimisetty Sneha Deepika** (`AV.SC.U4AIE23034`)
-    - **Nakka Keerthi** (`AV.SC.U4AIE23032`)
+    **Domain:**  
+    Urban Emergency Medical Services & Hospital Capacity Load Balancing
     
-    **Institution:**  
-    Amrita Vishwa Vidyapeetham
-    
-    **Course:**  
-    Reinforcement Learning
+    **Evaluation:**  
+    Real-World NYC OpenData EMS Records (274,964 Events)
     """)
     st.markdown("---")
     st.markdown("### 📊 Dataset Overview")
@@ -862,7 +858,7 @@ with tabs[5]:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #64748b; font-size: 13px; padding-bottom: 20px;">
-    <b>Reinforcement Learning Capstone Project</b> | Amrita Vishwa Vidyapeetham<br>
-    Developed by Parimisetty Sneha Deepika & Nakka Keerthi | Evaluated on NYC OpenData EMS Dispatch
+    <b>Dynamic Emergency Resource Allocation via Deep Reinforcement Learning</b><br>
+    Evaluated on 274,964 Real-World NYC OpenData EMS Records across 12 Hospital Hubs
 </div>
 """, unsafe_allow_html=True)
