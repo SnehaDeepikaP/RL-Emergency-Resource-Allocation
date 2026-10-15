@@ -1,0 +1,2 @@
+total_raw_incidents,clean_incidents,unique_zipcodes,start_datetime,end_datetime,median_travel_time_min,critical_share_pct,moderate_share_pct,low_severity_share_pct
+300000,274964,229,2025-10-23 14:53:46,2025-12-31 23:59:29,8.53,24.51,52.79,22.7
